@@ -80,7 +80,42 @@ class TuyaLan {
 
         this.api.on('didFinishLaunching', () => {
             this.discoverDevices();
+            this._startHeartbeat();
         });
+
+        this.api.on('shutdown', () => {
+            this._stopHeartbeat();
+            try { TuyaDiscovery.stop && TuyaDiscovery.stop(); } catch (e) {}
+            this.cachedAccessories.forEach(entry => {
+                const dev = entry && entry.device;
+                if (dev && dev._socket) {
+                    try { dev._socket.destroy(); } catch (e) {}
+                }
+            });
+        });
+    }
+
+    _startHeartbeat() {
+        if (this._heartbeatInterval) return;
+        const interval = (this.config && this.config.heartbeatInterval) || 300; // seconds
+        if (!this.log.debug) return; // nothing to log to
+        this._heartbeatInterval = setInterval(() => {
+            const summary = [];
+            this.cachedAccessories.forEach(entry => {
+                const dev = entry && entry.device;
+                if (!dev || !dev.context) return;
+                summary.push(`${dev.context.name}=${dev.connected ? 'up' : 'down'}`);
+            });
+            if (summary.length) this.log.debug('TuyaLan heartbeat:', summary.join(', '));
+        }, interval * 1000);
+        if (this._heartbeatInterval.unref) this._heartbeatInterval.unref();
+    }
+
+    _stopHeartbeat() {
+        if (this._heartbeatInterval) {
+            clearInterval(this._heartbeatInterval);
+            this._heartbeatInterval = null;
+        }
     }
 
     discoverDevices() {

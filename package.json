@@ -1,12 +1,13 @@
 {
   "name": "homebridge-tuya",
 
-  "version": "3.2.1",
+  "version": "3.3.0",
 
   "description": "🏠 Offical Homebridge plugin for TuyAPI ",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test/smoke.js",
+    "smoke": "node test/smoke.js"
   },
   "bin": {
     "tuya-lan": "./bin/cli.js",
@@ -24,13 +25,16 @@
   },
   "homepage": "https://github.com/iRayanKhan/homebridge-tuya#readme",
   "dependencies": {
-    "async": "^3.2.2",
+    "async": "^3.2.5",
     "commander": "^3.0.1",
     "fs-extra": "^8.1.0",
     "http-mitm-proxy": "^1.1.0",
-    "json5": "^2.2.0",
-    "qrcode": "^1.4.1",
-    "yaml": "^1.6.0"
+    "json5": "^2.2.3",
+    "qrcode": "^1.5.4",
+    "yaml": "^1.10.2"
+  },
+  "peerDependencies": {
+    "homebridge": "^1.6.0 || ^2.0.0-beta.0"
   },
   "keywords": [
     "homebridge-plugin",
@@ -40,6 +44,6 @@
   ],
   "engines": {
     "homebridge": "^1.6.0 || ^2.0.0-beta.0",
-    "node": "^18.20.4 || ^20.15.1 || ^22"
+    "node": "^20.18.0 || ^22"
   }
 }
