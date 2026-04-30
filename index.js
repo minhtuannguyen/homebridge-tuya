@@ -52,6 +52,17 @@ const CLASS_DEF = {
 
 let Characteristic, PlatformAccessory, Service, Categories, AdaptiveLightingController, UUID, Perms;
 
+// Homebridge v2 / HomeKit are stricter about accessory & service names. This
+// strips characters that HomeKit won't accept (anything outside
+// alphanumeric, apostrophe and space) and collapses whitespace.
+function sanitizeHomeKitName(name, fallback = 'Unnamed') {
+    const normalized = ('' + (name || fallback))
+        .replace(/[^A-Za-z0-9' ]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return normalized || fallback;
+}
+
 module.exports = function(homebridge) {
     ({
         platformAccessory: PlatformAccessory,
@@ -244,7 +255,7 @@ class TuyaLan {
         }
 
         if (!accessory) {
-            accessory = new PlatformAccessory(deviceConfig.name, deviceConfig.UUID, Accessory.getCategory(Categories));
+            accessory = new PlatformAccessory(sanitizeHomeKitName(deviceConfig.name), deviceConfig.UUID, Accessory.getCategory(Categories));
             accessory.getService(Service.AccessoryInformation)
                 .setCharacteristic(Characteristic.Manufacturer, deviceConfig.manufacturer || "Unknown")
                 .setCharacteristic(Characteristic.Model, deviceConfig.model || "Unknown")
@@ -253,11 +264,13 @@ class TuyaLan {
             isCached = false;
         }
 
-        if (accessory && accessory.displayName !== deviceConfig.name) {
+        const sanitizedName = sanitizeHomeKitName(deviceConfig.name);
+
+        if (accessory && accessory.displayName !== sanitizedName) {
             this.log.info(
                 "Configuration name %s differs from cached displayName %s. Updating cached displayName to %s ",
-                deviceConfig.name, accessory.displayName, deviceConfig.name);
-            accessory.displayName = deviceConfig.name;
+                deviceConfig.name, accessory.displayName, sanitizedName);
+            accessory.displayName = sanitizedName;
         }
 
         this.cachedAccessories.set(deviceConfig.UUID, new Accessory(this, accessory, device, !isCached));
@@ -268,8 +281,13 @@ class TuyaLan {
 
         this.log.warn('Unregistering', homebridgeAccessory.displayName);
 
-        delete this.cachedAccessories[homebridgeAccessory.UUID];
-        this.api.unregisterPlatformAccessories(PLATFORM_NAME, PLATFORM_NAME, [homebridgeAccessory]);
+        // Bug fix ported from palasinio/homebridge-tuya PR #524:
+        // - cachedAccessories is a Map, so use .delete() (the previous
+        //   `delete obj[key]` was a no-op).
+        // - unregisterPlatformAccessories() expects (PLUGIN_NAME, PLATFORM_NAME)
+        //   not (PLATFORM_NAME, PLATFORM_NAME).
+        this.cachedAccessories.delete(homebridgeAccessory.UUID);
+        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [homebridgeAccessory]);
     }
 
     removeAccessoryByUUID(uuid) {
